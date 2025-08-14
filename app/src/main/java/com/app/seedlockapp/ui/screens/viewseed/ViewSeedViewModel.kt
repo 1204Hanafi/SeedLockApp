@@ -3,114 +3,75 @@ package com.app.seedlockapp.ui.screens.viewseed
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.seedlockapp.data.repository.SeedRepository
-import com.app.seedlockapp.domain.interactor.KeystoreInteractor
-import com.app.seedlockapp.domain.interactor.SSSInteractor
-import com.app.seedlockapp.domain.model.Share
-import com.app.seedlockapp.session.SessionManager
+import com.app.seedlockapp.domain.manager.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * ViewModel for view seed screen.
- * Handles loading and displaying seed phrases securely.
+ * Kelas wrapper yang dirancang khusus untuk menangani String sensitif.
+ * Tujuannya adalah untuk menyediakan metode clear() agar referensi ke String
+ * bisa dihapus dari memori sesegera mungkin.
  */
-@HiltViewModel
-class ViewSeedViewModel @Inject constructor(
-    val sessionManager: SessionManager,
-    private val seedRepository: SeedRepository,
-    private val keystoreInteractor: KeystoreInteractor,
-    private val sssInteractor: SSSInteractor
-) : ViewModel() {
+class SensitiveString(initialValue: String) {
+    private var _value: String? = initialValue
 
-    private val _uiState = MutableStateFlow(ViewSeedUiState())
-    val uiState: StateFlow<ViewSeedUiState> = _uiState
+    fun getValue(): String? = _value
 
     /**
-     * Loads and reconstructs a seed phrase by its ID.
-     * 
-     * @param seedId The ID of the seed to load
+     * Menghapus referensi ke String sensitif. Ini adalah langkah penting
+     * agar Garbage Collector bisa membersihkan data dari memori.
      */
-    fun load(seedId: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(loading = true, error = null)
-            
-            try {
-                // Step 1: Load seed from repository by ID
-                val seed = seedRepository.getSeed(seedId)
-                if (seed == null) {
-                    _uiState.value = _uiState.value.copy(
-                        loading = false,
-                        error = "Seed not found"
-                    )
-                    return@launch
-                }
-
-                // Step 2: Decrypt each encrypted share using KeystoreInteractor
-                val decryptedShares = mutableListOf<Share>()
-                for (encryptedShareString in seed.encryptedShares) {
-                    try {
-                        val parts = encryptedShareString.split(":")
-                        if (parts.size != 2) continue
-                        
-                        val shareIndex = parts[0].toInt()
-                        val encodedData = parts[1]
-                        
-                        val combinedData = android.util.Base64.decode(encodedData, android.util.Base64.DEFAULT)
-                        
-                        // Extract IV and encrypted data
-                        val ivSize = 16 // AES block size
-                        val iv = combinedData.sliceArray(0 until ivSize)
-                        val encryptedData = combinedData.sliceArray(ivSize until combinedData.size)
-                        val cipher = keystoreInteractor.getDecryptCipher(iv)
-                        
-                        val decryptedData = keystoreInteractor.decrypt(cipher, encryptedData)
-                        decryptedShares.add(Share(shareIndex, decryptedData))
-                        
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to decrypt share")
-                    }
-                }
-
-                if (decryptedShares.size < 2) {
-                    _uiState.value = _uiState.value.copy(
-                        loading = false,
-                        error = "Insufficient shares for reconstruction"
-                    )
-                    return@launch
-                }
-
-                // Step 3: Reconstruct seed phrase using SSSInteractor
-                val reconstructedPhrase = sssInteractor.reconstructSecret(decryptedShares)
-                
-                // Step 4: Wrap in SecureString and update UI state
-                _uiState.value = _uiState.value.copy(
-                    alias = seed.name,
-                    seedPhrase = SecureString(reconstructedPhrase),
-                    loading = false,
-                    error = null
-                )
-                
-                Timber.d("Seed loaded and reconstructed successfully: %s", seedId)
-                
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Unknown error occurred"
-                )
-                Timber.e(e, "Failed to load seed: %s", seedId)
-            }
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        // Clear sensitive data when ViewModel is destroyed
-        _uiState.value.seedPhrase?.clear()
-        Timber.d("ViewSeedViewModel cleared, sensitive data wiped")
+    fun clear() {
+        _value = null
     }
 }
 
+data class ViewSeedUiState(
+    val loading: Boolean = true,
+    val alias: String = "",
+    val seedPhrase: SensitiveString? = null,
+    val error: String? = null
+)
+
+@HiltViewModel
+class ViewSeedViewModel @Inject constructor(
+    private val seedRepository: SeedRepository,
+    val sessionManager: SessionManager
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(ViewSeedUiState())
+    val uiState = _uiState.asStateFlow()
+
+    fun load(seedId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(loading = true) }
+
+            val alias = seedRepository.getAlias(seedId) ?: "N/A"
+
+            seedRepository.getDecryptedSeed(seedId)
+                .onSuccess { phrase ->
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            alias = alias,
+                            seedPhrase = SensitiveString(phrase),
+                            error = null
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            alias = alias,
+                            error = error.message ?: "Terjadi kesalahan tidak diketahui"
+                        )
+                    }
+                }
+        }
+    }
+}

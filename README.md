@@ -1,309 +1,194 @@
-# SeedLock - Secure Seed Phrase Storage App
-
-SeedLock adalah aplikasi Android yang mengimplementasikan penyimpanan seed phrase aman untuk wallet non-custodial menggunakan kombinasi Android Keystore, BiometricPrompt, dan Shamir's Secret Sharing.
-
-## 🔒 Fitur Keamanan
-
-- **Android Keystore**: Enkripsi hardware-backed untuk melindungi shares
-- **BiometricPrompt**: Autentikasi biometrik dengan timeout sesi 5 menit
-- **Shamir's Secret Sharing**: Skema 2-of-3 untuk membagi dan merekonstruksi seed phrase menggunakan Bouncy Castle
-- **EncryptedSharedPreferences**: Penyimpanan lokal terenkripsi
-- **Session Management**: Timeout otomatis untuk mencegah akses tidak sah
-
-## 🏗️ Arsitektur
-
-Aplikasi menggunakan arsitektur MVVM (Model-View-ViewModel) dengan pola Clean Architecture:
-
-```
-├── ui/                     # Presentation Layer
-│   ├── screens/           # Compose UI Screens
-│   ├── components/        # Reusable UI Components
-│   ├── navigation/        # Navigation Logic
-│   └── theme/            # UI Theme & Styling
-├── domain/                # Domain Layer
-│   ├── model/            # Domain Models
-│   └── interactor/       # Business Logic
-├── data/                  # Data Layer
-│   ├── repository/       # Repository Implementation
-│   ├── local/            # Local Data Sources
-│   └── model/            # Data Models
-├── session/              # Session Management
-└── di/                   # Dependency Injection
-```
-
-## 🚀 Cara Build & Run
-
-### Prerequisites
-
-- Android Studio Arctic Fox atau lebih baru
-- Android SDK API level 29+
-- Device atau emulator dengan Android 10+
-- Biometric authentication setup (fingerprint/face)
-
-### Build Instructions
-
-1. Clone repository:
-```bash
-git clone <repository-url>
-cd SeedLockApp
-```
-
-1. Open project di Android Studio
-
-2. Sync Gradle files
-
-3. Build dan run:
-```bash
-./gradlew assembleDebug
-./gradlew installDebug
-```
-
-### Dependencies
-
-Aplikasi menggunakan dependencies berikut:
-
-- **Jetpack Compose**: Modern UI toolkit
-- **Hilt**: Dependency injection
-- **Navigation Compose**: Navigation framework
-- **Biometric**: Biometric authentication
-- **Security Crypto**: EncryptedSharedPreferences
-- **Timber**: Logging
-
-## 📱 Cara Penggunaan
-
-### 1. Autentikasi Awal
-- Buka aplikasi
-- Sistem akan meminta autentikasi biometrik
-- Setelah berhasil, sesi akan aktif selama 5 menit
-
-### 2. Menambah Seed Phrase
-```kotlin
-// Contoh penggunaan AddSeedViewModel
-viewModel.onPhraseChanged("abandon abandon abandon...")
-viewModel.onAliasChanged("My Wallet")
-viewModel.saveSeed()
-```
-
-### 3. Melihat Seed Phrase
-```kotlin
-// Contoh penggunaan ViewSeedViewModel
-viewModel.load(seedId)
-// Seed phrase akan direkonstruksi dan ditampilkan
-```
-
-### 4. Session Management
-```kotlin
-// Refresh session pada setiap interaksi
-sessionManager.refreshInteraction()
-
-// Check status autentikasi
-sessionManager.isAuthenticated.collect { isAuth ->
-    // Handle authentication state
-}
-```
-
-## 🔧 API Documentation
-
-### SessionManager
-
-Mengelola sesi pengguna dan timeout otomatis.
-
-```kotlin
-class SessionManager {
-    // Mengautentikasi pengguna dan memulai timer timeout
-    fun authenticate()
-    
-    // Membatalkan sesi saat ini
-    fun invalidateSession()
-    
-    // Refresh timer timeout pada interaksi pengguna
-    fun refreshInteraction()
-    
-    // StateFlow untuk status autentikasi
-    val isAuthenticated: StateFlow<Boolean>
-}
-```
-
-### BiometricInteractor
-
-Menangani operasi autentikasi biometrik.
-
-```kotlin
-class BiometricInteractor {
-    // Cek ketersediaan biometrik pada device
-    fun isBiometricAvailable(activity: FragmentActivity): Boolean
-    
-    // Buat BiometricPrompt instance
-    fun createBiometricPrompt(
-        activity: FragmentActivity,
-        callback: BiometricPrompt.AuthenticationCallback
-    ): BiometricPrompt
-    
-    // Buat PromptInfo dengan konfigurasi default
-    fun createPromptInfo(
-        title: String = "Verifikasi Identitas Anda",
-        subtitle: String? = null,
-        negativeButtonText: String = "Batal"
-    ): BiometricPrompt.PromptInfo
-}
-```
-
-### KeystoreInteractor
-
-Menangani enkripsi/dekripsi menggunakan Android Keystore.
-
-```kotlin
-class KeystoreInteractor {
-    // Enkripsi data menggunakan AES/CBC/PKCS7Padding
-    fun encrypt(data: ByteArray): Pair<ByteArray, ByteArray>
-    
-    // Dekripsi data menggunakan AES/CBC/PKCS7Padding
-    fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray
-}
-```
-
-### SSSInteractor
-
-Implementasi Shamir's Secret Sharing.
-
-```kotlin
-class SSSInteractor {
-    // Split secret menjadi multiple shares (2-of-3)
-    fun splitSecret(secret: String): List<Share>
-    
-    // Rekonstruksi secret dari shares
-    fun reconstructSecret(shares: List<Share>): String
-    
-    // Validasi shares untuk rekonstruksi
-    fun validateShares(shares: List<Share>): Boolean
-}
-```
-
-### SeedRepository
-
-Interface untuk operasi CRUD seed phrases.
-
-```kotlin
-interface SeedRepository {
-    suspend fun saveSeed(seed: Seed)
-    suspend fun getSeed(id: String): Seed?
-    suspend fun getAllSeeds(): List<Seed>
-    suspend fun deleteSeed(id: String)
-}
-```
-
-## 🧪 Testing
-
-### Unit Tests
-```bash
-./gradlew test
-```
-
-### Instrumentation Tests
-```bash
-./gradlew connectedAndroidTest
-```
-
-### Test Coverage
-Target minimal 80% coverage untuk skenario use case utama.
+Proyek Skripsi: SeedLock
+Implementasi dan Evaluasi Aplikasi Android untuk Penyimpanan Seed Phrase pada Wallet Non-Custodial Menggunakan Keystore, BiometricPrompt, dan Shamir’s Secret Sharing.
 
-## 🔄 Development Workflow
-
-### Branching Strategy
-
-- `main`: Production-ready code
-- `feature/iter1-biometric`: SessionManager + BiometricPrompt
-- `feature/iter2-sss`: SSS + Keystore implementation
-- `feature/iter3-integration`: Full integration + UI
-
-### Commit Convention
-```
-feat: add new feature
-fix: bug fix
-docs: documentation changes
-refactor: code refactoring
-test: add or update tests
-```
-
-## 🛡️ Security Considerations
-
-1. **Hardware-backed Security**: Menggunakan Android Keystore untuk proteksi kunci
-2. **Biometric Authentication**: Autentikasi biometrik dengan fallback
-3. **Session Timeout**: Otomatis logout setelah 5 menit inaktivitas
-4. **Memory Protection**: SecureString untuk membersihkan data sensitif
-5. **Encrypted Storage**: EncryptedSharedPreferences untuk penyimpanan lokal
-
-## 📋 TODO & Future Improvements
-
-- [ ] Implementasi unit tests lengkap
-- [ ] Instrumentation tests untuk UI
-- [ ] Performance benchmarking
-- [ ] Backup/restore functionality
-- [ ] Multi-device synchronization
-- [ ] Enhanced error handling
-- [ ] Accessibility improvements
-
-## 📄 License
-
-[Specify your license here]
-
-## 👥 Contributors
-
-- Android Engineer - Implementation
-- Security Consultant - Security review
-- UI/UX Designer - Interface design
-
-## 📞 Support
-
-Untuk pertanyaan atau dukungan, silakan buat issue di repository ini atau hubungi tim development.
-
-
-
-## 🚀 Panduan Implementasi Step-by-Step di Android Studio
-
-Ikuti langkah-langkah berikut untuk mengimpor, membangun, dan menjalankan proyek SeedLock di Android Studio:
-
-### 1. Persiapan Awal
-
-- Pastikan Anda telah menginstal **Android Studio** versi terbaru (disarankan Arctic Fox atau lebih baru).
-- Pastikan **Android SDK** dengan API level 29 (Android 10) atau lebih tinggi sudah terinstal.
-- Siapkan **emulator Android** atau **perangkat fisik** dengan Android 10+ yang mendukung autentikasi biometrik (sidik jari atau pengenalan wajah).
-  - Untuk emulator, Anda bisa membuat AVD (Android Virtual Device) baru dan pastikan mengaktifkan opsi biometrik di pengaturan AVD.
-
-### 2. Mengimpor Proyek ke Android Studio
-
-1.  **Buka Android Studio.**
-2.  Dari layar selamat datang, pilih **"Open an existing Android Studio project"** atau jika sudah ada proyek terbuka, pergi ke `File > Open...`.
-3.  Navigasikan ke direktori tempat Anda mengkloning atau mengunduh proyek `SeedLockApp` (yaitu, folder `SeedLockApp` yang berisi `app`, `build.gradle.kts`, `settings.gradle.kts`, dll.).
-4.  Pilih folder `SeedLockApp` dan klik **"Open"**.
-
-### 3. Sinkronisasi Gradle
-
-- Setelah proyek terbuka, Android Studio akan secara otomatis memulai proses sinkronisasi Gradle.
-- Tunggu hingga proses ini selesai. Anda dapat melihat progres di jendela `Build` (biasanya di bagian bawah Android Studio).
-- Jika ada masalah sinkronisasi, periksa pesan error di jendela `Build` atau `Event Log` dan pastikan koneksi internet Anda stabil.
-
-### 4. Membangun (Build) Proyek
-
-- Setelah sinkronisasi Gradle berhasil, Anda dapat membangun proyek.
-- Pergi ke `Build > Make Project` atau klik ikon palu di toolbar Android Studio.
-- Tunggu hingga proses build selesai. Ini akan mengkompilasi kode sumber dan menghasilkan file APK.
-
-### 5. Menjalankan Aplikasi
-
-1.  **Pilih Target Perangkat**: Di toolbar Android Studio, Anda akan melihat dropdown untuk memilih perangkat (emulator atau perangkat fisik).
-    - Jika Anda menggunakan emulator, pilih AVD yang sudah Anda siapkan.
-    - Jika Anda menggunakan perangkat fisik, pastikan mode `USB debugging` aktif di perangkat Anda dan perangkat terhubung ke komputer.
-2.  **Jalankan Aplikasi**: Klik ikon `Run` (segitiga hijau) di toolbar Android Studio.
-3.  Android Studio akan menginstal aplikasi di perangkat yang dipilih dan meluncurkannya.
-
-### 6. Mengatur Biometrik di Emulator (Opsional)
-
-Jika Anda menggunakan emulator dan ingin menguji fitur biometrik:
-
-1.  Jalankan emulator Anda.
-2.  Di emulator, pergi ke `Settings > Security & location > Fingerprint` (atau opsi biometrik serupa).
-3.  Ikuti instruksi untuk menambahkan sidik jari. Untuk simulasi, Anda bisa menggunakan tombol `Enroll Fingerprint` di jendela kontrol emulator (ikon tiga titik di toolbar emulator, lalu `Fingerprint`).
-4.  Setelah sidik jari terdaftar, Anda dapat menguji autentikasi biometrik di aplikasi SeedLock.
-
-Dengan mengikuti langkah-langkah ini, Anda seharusnya dapat mengimpor, membangun, dan menjalankan aplikasi SeedLock di lingkungan pengembangan Android Studio Anda.
+1. Ringkasan Proyek
+   SeedLock adalah aplikasi Android prototipe yang dirancang untuk menyimpan seed phrase dari dompet non-kustodial dengan tingkat keamanan tinggi. Aplikasi ini mengimplementasikan pendekatan keamanan berlapis (defense-in-depth) dengan menggabungkan tiga teknologi utama:
+
+Android Keystore: Untuk enkripsi berbasis perangkat keras yang melindungi setiap bagian rahasia.
+
+BiometricPrompt: Untuk autentikasi pengguna yang aman dan terikat dengan kunci kriptografi.
+
+Shamir's Secret Sharing (SSS): Untuk memecah seed phrase menjadi beberapa bagian (shares), menghilangkan single point of failure.
+
+Proyek ini dikembangkan mengikuti proposal skripsi, menggunakan pendekatan Prototype Development secara iteratif dan arsitektur MVVM (Model-View-ViewModel).
+
+2. Arsitektur & Teknologi
+   Aplikasi ini dibangun dengan arsitektur MVVM yang bersih dan modular untuk memisahkan tanggung jawab dan meningkatkan kemudahan pengujian serta pemeliharaan.
+
+Lapisan Arsitektur:
+View (UI Layer):
+
+Dibangun sepenuhnya menggunakan Jetpack Compose, toolkit UI deklaratif modern dari Android.
+
+Terdiri dari Composable Screens (AuthScreen, HomeScreen, AddSeedScreen, ViewSeedScreen) yang hanya bertanggung jawab untuk menampilkan data dan meneruskan interaksi pengguna ke ViewModel.
+
+Navigasi diatur menggunakan Navigation Compose.
+
+MainActivity bertindak sebagai host untuk navigasi dan mengelola siklus hidup aplikasi, termasuk logika auto-logout saat aplikasi masuk ke latar belakang.
+
+ViewModel (Presentation Logic):
+
+Bertindak sebagai jembatan antara View dan Model (Repository).
+
+Menangani semua logika presentasi, mengelola state UI menggunakan Kotlin StateFlow, dan mengeksposnya ke Composable.
+
+Tidak memiliki referensi langsung ke View, sehingga tahan terhadap perubahan konfigurasi.
+
+Menggunakan Hilt untuk Dependency Injection, menyederhanakan penyediaan dependensi seperti Repository dan Manager.
+
+SessionManager diinjeksikan ke setiap ViewModel untuk mengelola sesi aktif (timeout 5 menit) dan mereset timer pada setiap interaksi pengguna.
+
+Model (Data Layer):
+
+Repository Pattern: SeedRepository menjadi satu-satunya sumber kebenaran (Single Source of Truth) untuk data aplikasi. Ini mengabstraksi sumber data dari seluruh aplikasi.
+
+DataStore: Digunakan untuk penyimpanan data persisten. Shares yang sudah dienkripsi disimpan di sini, menggantikan SharedPreferences yang sudah usang.
+
+KeystoreManager: Mengelola semua operasi dengan Android Keystore System. Ini bertanggung jawab untuk membuat kunci enkripsi/dekripsi, menyimpannya di lingkungan aman (di-backup oleh hardware jika didukung), dan melakukan operasi kriptografi.
+
+ShamirSecretSharingManager: Mengimplementasikan logika Shamir's Secret Sharing (SSS) menggunakan pustaka sss4j. Bertugas untuk memecah seed phrase menjadi 3 shares dan merekonstruksinya kembali dari 2 shares.
+
+BiometricInteractor: Mengelola logika untuk BiometricPrompt, termasuk menampilkan prompt dan menangani callback autentikasi.
+
+Teknologi Utama:
+Bahasa: Kotlin
+
+UI: Jetpack Compose
+
+Arsitektur: MVVM (Model-View-ViewModel)
+
+Dependency Injection: Hilt
+
+Asynchronous: Kotlin Coroutines & Flow
+
+Keamanan:
+
+Android Keystore API (untuk enkripsi)
+
+BiometricPrompt API (untuk autentikasi)
+
+Shamir's Secret Sharing (Pustaka sss4j)
+
+Penyimpanan: Jetpack DataStore
+
+Navigasi: Navigation Compose
+
+3. Alur Kerja Keamanan
+   Autentikasi: Pengguna membuka aplikasi dan harus melakukan autentikasi menggunakan biometrik (sidik jari/wajah). Sesi aktif dimulai selama 5 menit.
+
+Tambah Seed:
+
+Pengguna memasukkan 12 atau 24 kata seed phrase.
+
+Seed phrase dipecah menjadi 3 shares menggunakan SSS (skema 2-of-3).
+
+Untuk setiap share, KeystoreManager membuat kunci enkripsi unik di Android Keystore.
+
+Setiap share dienkripsi dengan kuncinya masing-masing.
+
+Ketiga shares yang sudah terenkripsi beserta IV (Initialization Vector) disimpan ke DataStore.
+
+Lihat Seed:
+
+Pengguna memilih seed yang ingin dilihat.
+
+Aplikasi memuat 3 shares terenkripsi dari DataStore.
+
+Untuk setiap share, KeystoreManager mengambil kunci yang sesuai dari Keystore dan mendekripsinya.
+
+Setelah 2 dari 3 shares berhasil didekripsi, SSS merekonstruksi seed phrase asli.
+
+Seed phrase ditampilkan di layar dan dihapus dari memori saat layar ditutup.
+
+Manajemen Sesi:
+
+Sesi aktif berlangsung selama 5 menit. Setiap interaksi pengguna (klik, scroll) akan mereset timer ini.
+
+Jika tidak ada interaksi selama 5 menit, sesi berakhir. Aksi selanjutnya akan memicu ulang autentikasi biometrik.
+
+Jika aplikasi dipindahkan ke latar belakang, sesi akan langsung berakhir dan memerlukan autentikasi ulang saat kembali.
+
+4. Cara Menjalankan Proyek
+   Prasyarat:
+   Android Studio Narwhal (2025.x) atau lebih baru.
+
+Perangkat Android fisik atau Emulator dengan API level 29+ dan dukungan biometrik.
+
+Langkah-langkah Build:
+Clone Repositori:
+
+git clone <url-proyek-anda>
+cd seedlock-app
+
+Buka di Android Studio:
+
+Buka Android Studio.
+
+Pilih File > Open dan arahkan ke folder proyek yang baru saja di-clone.
+
+Tunggu hingga Gradle selesai melakukan sinkronisasi.
+
+Tambahkan Pustaka SSS4J:
+
+Pustaka sss4j tidak tersedia di Maven Central. Anda perlu menambahkannya secara manual.
+
+Download file .jar dari repositori resminya.
+
+Buat folder libs di dalam direktori app.
+
+Salin file sss4j-1.0.0.jar ke dalam folder app/libs.
+
+Buka file app/build.gradle.kts dan tambahkan baris berikut di dalam blok dependencies:
+
+implementation(files("libs/sss4j-1.0.0.jar"))
+
+Lakukan sinkronisasi Gradle lagi.
+
+Jalankan Aplikasi:
+
+Pilih perangkat (emulator atau fisik) dari daftar target.
+
+Klik tombol Run 'app' (Shift + F10).
+
+5. Struktur Proyek
+   Berikut adalah struktur direktori utama dalam modul app:
+
+app/
+└── src/
+└── main/
+├── java/
+│   └── com/
+│       └── app/
+│           └── seedlockapp/
+│               ├── MainActivity.kt
+│               ├── SeedLockApp.kt
+│               ├── data/
+│               │   ├── local/
+│               │   │   └── DataStoreManager.kt
+│               │   ├── model/
+│               │   │   ├── Seed.kt
+│               │   │   └── Share.kt
+│               │   └── repository/
+│               │       └── SeedRepository.kt
+│               ├── di/
+│               │   └── AppModule.kt
+│               ├── domain/
+│               │   ├── interactor/
+│               │   │   └── BiometricInteractor.kt
+│               │   └── manager/
+│               │       ├── KeystoreManager.kt
+│               │       ├── SessionManager.kt
+│               │       └── ShamirSecretSharingManager.kt
+│               ├── ui/
+│               │   ├── components/
+│               │   ├── navigation/
+│               │   │   ├── AppNavigation.kt
+│               │   │   └── Screen.kt
+│               │   ├── screens/
+│               │   │   ├── addseed/
+│               │   │   ├── auth/
+│               │   │   ├── home/
+│               │   │   └── viewseed/
+│               │   └── theme/
+│               └── util/
+└── res/

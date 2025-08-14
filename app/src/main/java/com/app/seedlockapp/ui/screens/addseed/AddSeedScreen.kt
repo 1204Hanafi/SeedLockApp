@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +38,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -56,7 +58,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.app.seedlockapp.MainActivity
 import com.app.seedlockapp.ui.components.ReusableDialog
 import com.app.seedlockapp.ui.navigation.Screen
 
@@ -66,6 +67,7 @@ fun AddSeedScreen(
     navController: NavController,
     viewModel: AddSeedViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
 
     var showAliasDialog by remember { mutableStateOf(false) }
     var aliasText by remember { mutableStateOf("") }
@@ -74,12 +76,35 @@ fun AddSeedScreen(
         repeat(24) { add("") }
     } }
     var showErrorDialog by remember { mutableStateOf(false) }
+    var apiError by remember { mutableStateOf<String?>(null) }
 
     val focusRequester = remember { List(24) { FocusRequester() } }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(Unit) {
         viewModel.sessionManager.refreshInteraction()
+    }
+
+    LaunchedEffect(uiState) {
+        when (val state = uiState) {
+            is AddSeedUiState.Success -> {
+                // Jika sukses, navigasi ke halaman utama dan reset state
+                showAliasDialog = false
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.AddSeed.route) { inclusive = true }
+                }
+                viewModel.resetUiState()
+            }
+            is AddSeedUiState.Error -> {
+                // Jika error, tampilkan pesan dan reset state
+                apiError = state.message
+                showAliasDialog = false
+                viewModel.resetUiState()
+            }
+            else -> {
+                // Tidak ada aksi untuk Idle atau Loading di sini
+            }
+        }
     }
 
     Scaffold(
@@ -268,13 +293,25 @@ fun AddSeedScreen(
         onDismiss = { showErrorDialog = false }
     )
 
+    // Dialog untuk menampilkan error dari ViewModel
+    if (apiError != null) {
+        ReusableDialog(
+            showDialog = true,
+            title = "Gagal Menyimpan",
+            message = apiError!!,
+            onConfirm = { apiError = null },
+            onDismiss = { apiError = null }
+        )
+    }
+
     if (showAliasDialog) {
         var aliasError by remember { mutableStateOf(false) }
 
         AlertDialog(
-            onDismissRequest = { showAliasDialog = false },
+            onDismissRequest = { if (uiState !is AddSeedUiState.Loading) showAliasDialog = false },
             title = { Text("Masukkan Alias") },
             text = {
+                // Kode text field alias tidak berubah
                 Column {
                     OutlinedTextField(
                         value = aliasText,
@@ -288,47 +325,49 @@ fun AddSeedScreen(
                         singleLine = true
                     )
                     if (aliasError) {
-                        Text(
-                            "Alias tidak boleh kosong",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Text("Alias tidak boleh kosong", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (aliasText.isNotBlank()) {
-                        viewModel.sessionManager.refreshInteraction()
-                        val cleaned = words.take(wordCount)
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
-                        val phrase = cleaned.joinToString(" ")
+                // 3. Tombol konfirmasi sekarang bereaksi terhadap UI State
+                TextButton(
+                    onClick = {
+                        if (aliasText.isNotBlank()) {
+                            viewModel.sessionManager.refreshInteraction()
+                            val cleaned = words.take(wordCount).map { it.trim() }.filter { it.isNotEmpty() }
+                            val phrase = cleaned.joinToString(" ")
 
-                        viewModel.onPhraseChanged(phrase)
-                        viewModel.onAliasChanged(aliasText.trim())
-                        viewModel.saveSeed(navController.context as MainActivity)
-
-                        showAliasDialog = false
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.AddSeed.route) { inclusive = true }
+                            viewModel.onPhraseChanged(phrase)
+                            viewModel.onAliasChanged(aliasText.trim())
+                            // Panggil saveSeed tanpa context
+                            viewModel.saveSeed()
+                        } else {
+                            aliasError = true
                         }
+                    },
+                    // Tombol dinonaktifkan saat loading
+                    enabled = uiState !is AddSeedUiState.Loading
+                ) {
+                    // Tampilkan loading indicator atau teks biasa
+                    if (uiState is AddSeedUiState.Loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     } else {
-                        aliasError = true
+                        Text("Simpan") // Teks diubah dari "Selanjutnya" menjadi "Simpan"
                     }
-                }) {
-                    Text("Selanjutnya")
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showAliasDialog = false}) {
+                TextButton(
+                    onClick = { showAliasDialog = false },
+                    // Tombol dinonaktifkan saat loading
+                    enabled = uiState !is AddSeedUiState.Loading
+                ) {
                     Text("Batal")
                 }
             }
         )
     }
-
 }
 
 @Composable

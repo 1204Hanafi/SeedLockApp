@@ -55,6 +55,7 @@ fun ViewSeedScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            Timber.d("ViewSeedScreen disposed. Clearing sensitive data.")
             state.seedPhrase?.clear()
         }
     }

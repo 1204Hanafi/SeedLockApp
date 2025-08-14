@@ -1,15 +1,17 @@
 package com.app.seedlockapp.domain.model
 
 /**
- * Data class representing a Shamir's Secret Sharing share.
+ * Model Domain yang merepresentasikan satu bagian (share) mentah dari Shamir's Secret Sharing.
+ * Kelas ini berfungsi sebagai lapisan abstraksi antara pustaka eksternal dan logika aplikasi.
  *
- * @property index The index of this share (1-based)
- * @property value The actual share value as byte array
+ * @property index Indeks dari share ini (misalnya, 1, 2, atau 3).
+ * @property value Nilai data mentah dari share dalam bentuk ByteArray.
  */
 data class Share(
     val index: Int,
     val value: ByteArray
 ) {
+    // Override equals dan hashCode diperlukan saat membandingkan objek yang berisi ByteArray.
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -28,4 +30,3 @@ data class Share(
         return result
     }
 }
-

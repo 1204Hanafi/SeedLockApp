@@ -1,32 +1,16 @@
 package com.app.seedlockapp.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Card component for displaying seed information in a list.
- * 
- * @param number Sequential number of the seed in the list.
- * @param name User-defined name/alias of the seed.
- * @param onView Callback when view button is clicked.
- * @param onDelete Callback when delete button is clicked.
- */
 @Composable
 fun SeedCard(
     number: Int,
@@ -36,6 +20,7 @@ fun SeedCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -53,7 +38,7 @@ fun SeedCard(
                     text = if (number < 10) "0$number" else "$number",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(end = 8.dp)
                 )
                 Text(
@@ -63,7 +48,7 @@ fun SeedCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            
+
             Row {
                 IconButton(onClick = onView) {
                     Icon(
@@ -83,4 +68,3 @@ fun SeedCard(
         }
     }
 }
-

@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.app.seedlockapp"
-        minSdk = 29
+        minSdk = 30
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.gson)
 
     implementation(libs.dagger.hilt)
+    implementation(libs.androidx.datastore.preferences)
     kapt(libs.dagger.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
@@ -95,4 +96,8 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+kapt {
+    correctErrorTypes = true
 }
