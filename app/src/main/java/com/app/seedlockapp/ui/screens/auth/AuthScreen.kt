@@ -40,6 +40,13 @@ fun AuthScreen(
                 viewModel.onAuthError(0, "Biometric authentication is not available.")
                 return
             }
+
+            val cipher = viewModel.keystoreManager.getAuthCipher()
+            if (cipher == null) {
+                viewModel.onAuthError(0, "Failed to create cryptographic object.")
+                return
+            }
+
             // 2. Memanggil createPromptInfo
             val promptInfo = viewModel.biometricInteractor.createPromptInfo(
                 title = "Verifikasi Identitas Anda",
@@ -66,12 +73,15 @@ fun AuthScreen(
             }
         )
         // Tampilkan prompt ke pengguna
-        biometricPrompt.authenticate(promptInfo)
+        biometricPrompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
     }
 
     val observer = LifecycleEventObserver { _, event ->
         if (event == Lifecycle.Event.ON_RESUME) {
             Timber.d("AuthScreen resumed, triggering authentication")
+            if (viewModel.authState.value is AuthState.Error) {
+                viewModel.onAuthError(0,"")
+            }
             triggerAuth()
         }
     }

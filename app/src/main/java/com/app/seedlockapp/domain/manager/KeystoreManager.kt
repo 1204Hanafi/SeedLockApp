@@ -21,6 +21,50 @@ class KeystoreManager {
     }
 
     /**
+     * Mendapatkan Cipher untuk enkripsi yang memerlukan autentikasi biometrik.
+     * Ini akan digunakan untuk membuat CryptoObject.
+     * @return Cipher yang siap digunakan atau null jika gagal.
+     */
+    fun getAuthCipher(): Cipher? {
+        try {
+            val secretKey = getSecretKeyForAuth()
+            val cipher = Cipher.getInstance(Constants.KEY_ENCRYPTION_ALGORITHM)
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+            return cipher
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to create auth cipher")
+            return null
+        }
+    }
+
+    /**
+     * Membuat atau mengambil kunci yang terikat dengan autentikasi biometrik.
+     * Kunci ini hanya bisa digunakan setelah pengguna berhasil melakukan autentikasi.
+     */
+    private fun getSecretKeyForAuth(): SecretKey {
+        val alias = "biometric_auth_key"
+        val existingKey = (keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.secretKey
+        if (existingKey != null) {
+            return existingKey
+        }
+
+        val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, Constants.ANDROID_KEYSTORE_PROVIDER)
+        val parameterSpec = KeyGenParameterSpec.Builder(
+            alias,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(Constants.KEY_SIZE_BITS)
+            // MEWAJIBKAN AUTENTIKASI PENGGUNA (BIOMETRIK) UNTUK MENGGUNAKAN KUNCI INI
+            .setUserAuthenticationRequired(true)
+            .build()
+
+        keyGenerator.init(parameterSpec)
+        return keyGenerator.generateKey()
+    }
+
+    /**
      * Membuat dan menyimpan sebuah secret key baru di Android Keystore.
      * @param alias Alias unik untuk kunci yang akan dibuat.
      * @return SecretKey yang baru dibuat.

@@ -2,6 +2,7 @@ package com.app.seedlockapp.ui.screens.auth
 
 import androidx.lifecycle.ViewModel
 import com.app.seedlockapp.domain.interactor.BiometricInteractor
+import com.app.seedlockapp.domain.manager.KeystoreManager
 import com.app.seedlockapp.domain.manager.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,8 @@ sealed class AuthState {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     val biometricInteractor: BiometricInteractor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    val keystoreManager: KeystoreManager
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)

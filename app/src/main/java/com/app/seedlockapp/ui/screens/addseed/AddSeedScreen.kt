@@ -190,7 +190,7 @@ fun AddSeedScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .background(Color.LightGray, shape = RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.secondary, shape = RoundedCornerShape(50))
             ) {
                 Row(Modifier.fillMaxSize()) {
                     SegmentedButton(
@@ -228,7 +228,7 @@ fun AddSeedScreen(
                                         .heightIn(min = 48.dp)
                                         .border(
                                             2.dp,
-                                            Color.Black,
+                                            MaterialTheme.colorScheme.onSurface,
                                             RoundedCornerShape(8.dp)
                                         )
                                         .background(Color.Transparent),
@@ -268,8 +268,8 @@ fun AddSeedScreen(
                                             onDone = { keyboardController?.hide() }
                                         ),
                                         colors = OutlinedTextFieldDefaults.colors(
-                                            unfocusedBorderColor = Color.Black,
-                                            focusedBorderColor = Color.Black,
+                                            unfocusedBorderColor = Color.Transparent,
+                                            focusedBorderColor = Color.Transparent,
                                             unfocusedContainerColor = Color.Transparent,
                                             focusedContainerColor = Color.Transparent
                                         ),
@@ -385,7 +385,7 @@ private fun SegmentedButton(
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-            contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else Color.Black
+            contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
         ),
         elevation = null
     ) {

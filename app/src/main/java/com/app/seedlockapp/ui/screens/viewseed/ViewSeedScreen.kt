@@ -184,7 +184,7 @@ fun ViewSeedScreen(
                                                         .heightIn(min = 48.dp)
                                                         .border(
                                                             2.dp,
-                                                            Color.Black,
+                                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                                             RoundedCornerShape(8.dp)
                                                         )
                                                         .background(Color.Transparent),
