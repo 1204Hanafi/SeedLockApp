@@ -58,6 +58,7 @@ class KeystoreManager {
             .setKeySize(Constants.KEY_SIZE_BITS)
             // MEWAJIBKAN AUTENTIKASI PENGGUNA (BIOMETRIK) UNTUK MENGGUNAKAN KUNCI INI
             .setUserAuthenticationRequired(true)
+            .setInvalidatedByBiometricEnrollment(true)
             .build()
 
         keyGenerator.init(parameterSpec)
@@ -153,6 +154,7 @@ class KeystoreManager {
             val gcmParameterSpec = GCMParameterSpec(Constants.AUTH_TAG_LENGTH_BITS, ivBytes)
 
             cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmParameterSpec)
+
 
             val encryptedBytes = Base64.decode(encryptedData, Base64.DEFAULT)
             cipher.doFinal(encryptedBytes)

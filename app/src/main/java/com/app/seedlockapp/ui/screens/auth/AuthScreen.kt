@@ -1,5 +1,6 @@
 package com.app.seedlockapp.ui.screens.auth
 
+import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ fun AuthScreen(
     val fragmentActivity = context as? FragmentActivity
     val state by viewModel.authState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+    rememberCoroutineScope()
 
     DisposableEffect(lifecycleOwner, fragmentActivity) {
         fun triggerAuth() {
@@ -72,8 +74,34 @@ fun AuthScreen(
                 }
             }
         )
-        // Tampilkan prompt ke pengguna
-        biometricPrompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
+            val biometricManager = BiometricManager.from(fragmentActivity)
+            val canStrong = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+
+            when (canStrong) {
+                BiometricManager.BIOMETRIC_SUCCESS -> {
+                    try {
+                        biometricPrompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
+                    } catch (iae: IllegalArgumentException) {
+                        // Safety-net: jika ada kondisi edge yang menolak crypto-based, fallback non-crypto
+                        Timber.e(iae, "Crypto-based auth not supported despite strong reported; fallback to non-crypto.")
+                        biometricPrompt.authenticate(promptInfo) // non-crypto fallback
+                    } catch (t: Throwable) {
+                        Timber.e(t, "Unexpected error when starting crypto-based biometric auth")
+                        viewModel.onAuthError(0, "Authentication error.")
+                    }
+                }
+                else -> {
+                    // Jika tidak ada BIOMETRIC_STRONG, cek weak biometric
+                    val canWeak = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                    if (canWeak == BiometricManager.BIOMETRIC_SUCCESS) {
+                        // Hanya weak biometric tersedia -> gunakan non-crypto authenticate (tanpa CryptoObject)
+                        biometricPrompt.authenticate(promptInfo)
+                    } else {
+                        // Tidak ada biometric yang memadai -> beri error / fallback
+                        viewModel.onAuthError(0, "Biometric strong not available on this device.")
+                    }
+                }
+            }
     }
 
     val observer = LifecycleEventObserver { _, event ->
