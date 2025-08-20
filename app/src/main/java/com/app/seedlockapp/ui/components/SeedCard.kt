@@ -11,6 +11,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+/**
+ * Komponen Card yang menampilkan informasi ringkas tentang satu seed yang tersimpan.
+ * Menyediakan aksi untuk melihat detail dan menghapus seed.
+ *
+ * @param number Nomor urut seed yang akan ditampilkan.
+ * @param name Alias atau nama dari seed.
+ * @param onView Lambda yang dipanggil saat tombol "lihat" ditekan.
+ * @param onDelete Lambda yang dipanggil saat tombol "hapus" ditekan.
+ */
 @Composable
 fun SeedCard(
     number: Int,
@@ -20,47 +29,46 @@ fun SeedCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Teks nomor dengan padding agar selalu dua digit (misal: 01, 02, 10)
                 Text(
-                    text = if (number < 10) "0$number" else "$number",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(end = 8.dp)
+                    text = number.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
+            // Aksi tombol
             Row {
                 IconButton(onClick = onView) {
                     Icon(
-                        imageVector = Icons.Filled.Visibility,
-                        contentDescription = "View Seed",
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = "Lihat Seed $name",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
-                        imageVector = Icons.Filled.Delete,
-                        contentDescription = "Delete Seed",
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Hapus Seed $name",
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
