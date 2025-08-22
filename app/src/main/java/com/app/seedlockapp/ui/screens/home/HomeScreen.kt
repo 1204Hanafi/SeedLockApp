@@ -1,5 +1,6 @@
 package com.app.seedlockapp.ui.screens.home
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,6 +44,13 @@ import com.app.seedlockapp.ui.components.ReusableDialog
 import com.app.seedlockapp.ui.components.SeedCard
 import com.app.seedlockapp.ui.navigation.Screen
 
+/**
+ * Layar utama aplikasi yang menampilkan daftar seed yang telah disimpan.
+ * Pengguna dapat melihat, menghapus, atau menavigasi ke layar tambah seed dari sini.
+ *
+ * @param navController Controller untuk menangani navigasi ke layar lain.
+ * @param viewModel ViewModel yang menyediakan state UI dan menangani logika bisnis.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -50,9 +59,18 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialogFor by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
 
+    // Efek samping untuk mereset interaksi sesi setiap kali ada interaksi.
     LaunchedEffect(Unit) {
         viewModel.sessionManager.refreshInteraction()
+    }
+
+    // Menampilkan pesan error dari ViewModel jika ada.
+    uiState.error?.let { errorMessage ->
+        Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+        // Memberi tahu ViewModel bahwa error telah ditampilkan agar tidak muncul lagi.
+        viewModel.errorShown()
     }
 
     Scaffold(
@@ -148,6 +166,7 @@ fun HomeScreen(
                 }
             }
 
+            // Dialog konfirmasi penghapusan.
             ReusableDialog(
                 showDialog = showDeleteDialogFor != null,
                 title = "Hapus Seed?",

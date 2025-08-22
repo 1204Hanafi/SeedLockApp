@@ -1,5 +1,6 @@
 package com.app.seedlockapp.ui.screens.viewseed
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import timber.log.Timber
 
+/**
+ * Layar untuk menampilkan seed phrase yang telah didekripsi.
+ * Ini adalah layar yang sangat sensitif. Data seed phrase dibersihkan dari memori
+ * saat pengguna meninggalkan layar ini untuk meminimalkan risiko keamanan.
+ *
+ * @param navController Controller untuk menangani navigasi.
+ * @param seedId ID dari seed yang akan ditampilkan, diterima sebagai argumen navigasi.
+ * @param viewModel ViewModel yang menangani logika dekripsi dan state UI.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewSeedScreen(
@@ -52,7 +63,10 @@ fun ViewSeedScreen(
 ) {
 
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
+    // DisposableEffect untuk membersihkan data sensitif saat layar dihancurkan (disposed).
+    // Ini adalah lapisan keamanan tambahan untuk memastikan data tidak tertinggal di memori.
     DisposableEffect(Unit) {
         onDispose {
             Timber.d("ViewSeedScreen disposed. Clearing sensitive data.")
@@ -60,13 +74,15 @@ fun ViewSeedScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.sessionManager.refreshInteraction()
-    }
-
+    // Memuat data hanya sekali saat layar pertama kali dibuat dengan seedId yang diberikan.
     LaunchedEffect(seedId) {
         Timber.d("Initializing ViewSeedScreen for seedId: $seedId")
         viewModel.load(seedId)
+    }
+
+    // Memperbarui sesi setiap ada interaksi.
+    LaunchedEffect(Unit) {
+        viewModel.sessionManager.refreshInteraction()
     }
 
     Scaffold(
@@ -131,16 +147,10 @@ fun ViewSeedScreen(
                 }
                 .padding(horizontal = 16.dp, vertical = 24.dp)
         ) {
-            // Tampilkan error jika ada
+            // Menampilkan pesan error dari ViewModel jika ada.
             state.error?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                )
+                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                // Idealnya, ViewModel memiliki fungsi untuk membersihkan error setelah ditampilkan.
             }
 
             // Tampilkan loading indicator
@@ -152,7 +162,8 @@ fun ViewSeedScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                // Konten utama hanya jika tidak loading dan tidak ada error
+                // Konten utama hanya ditampilkan jika tidak loading.
+                // Jika ada error, pesan error akan ditampilkan oleh Toast di atas.
                 if (state.error == null) {
                     Text(
                         text = "Nama Seed: ${state.alias}",

@@ -22,6 +22,14 @@ import com.app.seedlockapp.R
 import com.app.seedlockapp.ui.navigation.Screen
 import timber.log.Timber
 
+/**
+ * Layar otentikasi biometrik yang berfungsi sebagai gerbang utama aplikasi.
+ * Layar ini secara otomatis memicu dialog BiometricPrompt saat ditampilkan.
+ * Tampilannya akan beradaptasi berdasarkan state dari [AuthViewModel].
+ *
+ * @param navController Controller untuk menangani navigasi setelah otentikasi berhasil.
+ * @param viewModel ViewModel yang mengelola logika dan state dari proses otentikasi.
+ */
 @Composable
 fun AuthScreen(
     navController: NavController,
@@ -33,92 +41,24 @@ fun AuthScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     rememberCoroutineScope()
 
+    // DisposableEffect digunakan untuk mengelola logika yang terikat dengan siklus hidup layar.
+    // Ini akan memicu otentikasi saat layar masuk (resume) dan membersihkan observer saat keluar.
     DisposableEffect(lifecycleOwner, fragmentActivity) {
-        fun triggerAuth() {
-            if (fragmentActivity == null) return
-            if (viewModel.authState.value !is AuthState.Idle) return
-
-            if (!viewModel.biometricInteractor.isBiometricAvailable(fragmentActivity)) {
-                viewModel.onAuthError(0, "Biometric authentication is not available.")
-                return
-            }
-
-            val cipher = viewModel.keystoreManager.getAuthCipher()
-            if (cipher == null) {
-                viewModel.onAuthError(0, "Failed to create cryptographic object.")
-                return
-            }
-
-            // 2. Memanggil createPromptInfo
-            val promptInfo = viewModel.biometricInteractor.createPromptInfo(
-                title = "Verifikasi Identitas Anda",
-                negativeButtonText = "Batal"
-            )
-
-            // 3. Memanggil createBiometricPrompt
-            val biometricPrompt = viewModel.biometricInteractor.createBiometricPrompt(
-                fragmentActivity,
-            object : BiometricPrompt.AuthenticationCallback() {
-                // Callback jika autentikasi berhasil
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    viewModel.onAuthSuccess()
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                Timber.d("AuthScreen resumed, triggering authentication")
+                if (viewModel.authState.value is AuthState.Error) {
+                    viewModel.onAuthError(0,"")
                 }
-                // Callback jika terjadi error atau dibatalkan pengguna
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    // Jika pengguna menekan "Batal", error code akan ter-trigger.
-                    Timber.d("Authentication Error - Code: $errorCode, Message: $errString")
-                    // Ini akan menutup aplikasi.
-                    viewModel.onAuthError(errorCode,errString.toString())
-                }
+                triggerAuth(fragmentActivity, viewModel)
             }
-        )
-            val biometricManager = BiometricManager.from(fragmentActivity)
-            val canStrong = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-
-            when (canStrong) {
-                BiometricManager.BIOMETRIC_SUCCESS -> {
-                    try {
-                        biometricPrompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
-                    } catch (iae: IllegalArgumentException) {
-                        // Safety-net: jika ada kondisi edge yang menolak crypto-based, fallback non-crypto
-                        Timber.e(iae, "Crypto-based auth not supported despite strong reported; fallback to non-crypto.")
-                        biometricPrompt.authenticate(promptInfo) // non-crypto fallback
-                    } catch (t: Throwable) {
-                        Timber.e(t, "Unexpected error when starting crypto-based biometric auth")
-                        viewModel.onAuthError(0, "Authentication error.")
-                    }
-                }
-                else -> {
-                    // Jika tidak ada BIOMETRIC_STRONG, cek weak biometric
-                    val canWeak = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
-                    if (canWeak == BiometricManager.BIOMETRIC_SUCCESS) {
-                        // Hanya weak biometric tersedia -> gunakan non-crypto authenticate (tanpa CryptoObject)
-                        biometricPrompt.authenticate(promptInfo)
-                    } else {
-                        // Tidak ada biometric yang memadai -> beri error / fallback
-                        viewModel.onAuthError(0, "Biometric strong not available on this device.")
-                    }
-                }
-            }
-    }
-
-    val observer = LifecycleEventObserver { _, event ->
-        if (event == Lifecycle.Event.ON_RESUME) {
-            Timber.d("AuthScreen resumed, triggering authentication")
-            if (viewModel.authState.value is AuthState.Error) {
-                viewModel.onAuthError(0,"")
-            }
-            triggerAuth()
         }
-    }
 
         // Tambahkan observer ke siklus hidup
         lifecycleOwner.lifecycle.addObserver(observer)
 
         // Pemicu pertama kali saat Composable dibuat
-        triggerAuth()
+        triggerAuth(fragmentActivity, viewModel)
 
         // Hapus observer saat Composable dihancurkan
         onDispose {
@@ -126,6 +66,7 @@ fun AuthScreen(
         }
     }
 
+    // Tampilan UI berdasarkan AuthState
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (val currentState = state) {
             is AuthState.Idle -> {
@@ -140,6 +81,7 @@ fun AuthScreen(
                 }
             }
             is AuthState.Success -> {
+                // Navigasi sebagai side-effect saat state berubah menjadi Success.
                 LaunchedEffect(Unit) {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Auth.route) { inclusive = true }
@@ -148,10 +90,80 @@ fun AuthScreen(
             }
             is AuthState.Error -> {
                 Text("Authentication failed: ${currentState.message}")
+                // Menutup aplikasi setelah jeda singkat jika otentikasi gagal.
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(2000)
                     fragmentActivity?.finish()
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Fungsi helper untuk memicu dialog otentikasi biometrik.
+ * Dipisahkan dari UI untuk kejelasan dan penggunaan kembali.
+ *
+ * @param fragmentActivity Activity host yang diperlukan untuk menampilkan dialog.
+ * @param viewModel ViewModel untuk menangani hasil callback dari BiometricPrompt.
+ */
+private fun triggerAuth(fragmentActivity: FragmentActivity?, viewModel: AuthViewModel) {
+    if (fragmentActivity == null) return
+    if (viewModel.authState.value !is AuthState.Idle) return
+
+    if (!viewModel.biometricInteractor.isBiometricAvailable(fragmentActivity)) {
+        viewModel.onAuthError(0, "Biometric authentication is not available.")
+        return
+    }
+
+    val cipher = viewModel.keystoreManager.getAuthCipher()
+    if (cipher == null) {
+        viewModel.onAuthError(0, "Failed to create cryptographic object.")
+        return
+    }
+
+    val promptInfo = viewModel.biometricInteractor.createPromptInfo(
+        title = "Verifikasi Identitas Anda",
+        negativeButtonText = "Batal"
+    )
+
+    val biometricPrompt = viewModel.biometricInteractor.createBiometricPrompt(
+        fragmentActivity,
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                viewModel.onAuthSuccess()
+            }
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                Timber.d("Authentication Error - Code: $errorCode, Message: $errString")
+                viewModel.onAuthError(errorCode, errString.toString())
+            }
+        }
+    )
+
+    // Logika untuk menentukan apakah akan menggunakan otentikasi berbasis kripto atau tidak.
+    val biometricManager = BiometricManager.from(fragmentActivity)
+    val canStrong = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+
+    when (canStrong) {
+        BiometricManager.BIOMETRIC_SUCCESS -> {
+            try {
+                biometricPrompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
+            } catch (iae: IllegalArgumentException) {
+                Timber.e(iae, "Crypto-based auth not supported despite strong reported; fallback to non-crypto.")
+                biometricPrompt.authenticate(promptInfo) // Fallback ke non-kripto
+            } catch (t: Throwable) {
+                Timber.e(t, "Unexpected error when starting crypto-based biometric auth")
+                viewModel.onAuthError(0, "Authentication error.")
+            }
+        }
+        else -> {
+            val canWeak = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+            if (canWeak == BiometricManager.BIOMETRIC_SUCCESS) {
+                biometricPrompt.authenticate(promptInfo)
+            } else {
+                viewModel.onAuthError(0, "Biometric strong not available on this device.")
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.app.seedlockapp.data.repository
 
 import com.app.seedlockapp.data.local.DataStoreManager
+import com.app.seedlockapp.data.model.EncryptedShare
 import com.app.seedlockapp.data.model.Seed
 import com.app.seedlockapp.domain.manager.KeystoreManager
 import com.app.seedlockapp.domain.manager.ShamirSecretSharingManager
@@ -46,12 +47,17 @@ class SeedRepository(
 
             // 2. Enkripsi setiap share
             val seedId = UUID.randomUUID().toString()
-            val encryptedShares = mutableMapOf<Int, Pair<String, String>>()
-            shares.forEach { share ->
+            val encryptedShares = mutableMapOf<Int, EncryptedShare>() // -> Menggunakan EncryptedShare
+            for (share in shares) {
                 val keyAlias = "${Constants.KEY_ALIAS_PREFIX}${seedId}_share_${share.index}"
-                val encrypted = keystoreManager.encrypt(keyAlias, share.value)
+                val encryptedResult = keystoreManager.encrypt(keyAlias, share.value)
                     ?: return Result.failure(GeneralSecurityException("Gagal mengenkripsi bagian #${share.index}."))
-                encryptedShares[share.index] = encrypted
+
+                // Buat objek EncryptedShare
+                encryptedShares[share.index] = EncryptedShare(
+                    encryptedData = encryptedResult.first,
+                    iv = encryptedResult.second
+                )
             }
             val encryptTime = System.currentTimeMillis()
             Timber.d("Total Encryption Latency: ${encryptTime - splitTime} ms")
@@ -71,7 +77,6 @@ class SeedRepository(
             Result.failure(e)
         }
     }
-
 
     /**
      * Memuat dan merekonstruksi seed phrase dari penyimpanan.
@@ -96,10 +101,10 @@ class SeedRepository(
 
             // 2. Dekripsi setiap share
             val decryptedShares = mutableListOf<DomainShare>()
-            encryptedShares.forEach { (shareNumber, shareData) ->
+            for ((shareNumber, shareData) in encryptedShares) {
                 val keyAlias = "${Constants.KEY_ALIAS_PREFIX}${seedId}_share_$shareNumber"
-                val (encrypted, iv) = shareData
-                val decrypted: ByteArray? = keystoreManager.decrypt(keyAlias, encrypted, iv)
+                // Menggunakan properti dari EncryptedShare
+                val decrypted: ByteArray? = keystoreManager.decrypt(keyAlias, shareData.encryptedData, shareData.iv)
                 if (decrypted != null) {
                     decryptedShares.add(DomainShare(index = shareNumber, value = decrypted))
                 } else {

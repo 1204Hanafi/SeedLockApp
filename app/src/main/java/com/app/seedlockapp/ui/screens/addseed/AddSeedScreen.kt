@@ -61,6 +61,14 @@ import androidx.navigation.NavController
 import com.app.seedlockapp.ui.components.ReusableDialog
 import com.app.seedlockapp.ui.navigation.Screen
 
+/**
+ * Layar untuk menambahkan seed phrase baru.
+ * Pengguna dapat memilih antara 12 atau 24 kata, mengisinya,
+ * memberikan alias, dan menyimpannya dengan aman.
+ *
+ * @param navController Controller untuk navigasi.
+ * @param viewModel ViewModel yang mengelola state input dan logika penyimpanan.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSeedScreen(
@@ -81,22 +89,22 @@ fun AddSeedScreen(
     val focusRequester = remember { List(24) { FocusRequester() } }
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    // Memperbarui sesi setiap ada interaksi.
     LaunchedEffect(Unit) {
         viewModel.sessionManager.refreshInteraction()
     }
 
+    // Bereaksi terhadap perubahan state dari ViewModel.
     LaunchedEffect(uiState) {
         when (val state = uiState) {
             is AddSeedUiState.Success -> {
-                // Jika sukses, navigasi ke halaman utama dan reset state
-                showAliasDialog = false
+             showAliasDialog = false
                 navController.navigate(Screen.Home.route) {
                     popUpTo(Screen.AddSeed.route) { inclusive = true }
                 }
                 viewModel.resetUiState()
             }
             is AddSeedUiState.Error -> {
-                // Jika error, tampilkan pesan dan reset state
                 apiError = state.message
                 showAliasDialog = false
                 viewModel.resetUiState()
@@ -285,6 +293,7 @@ fun AddSeedScreen(
         }
     }
 
+    // Dialog untuk validasi input yang tidak lengkap.
     ReusableDialog(
         showDialog = showErrorDialog,
         title = "Data Tidak Lengkap",
@@ -304,6 +313,7 @@ fun AddSeedScreen(
         )
     }
 
+    // Dialog untuk memasukkan alias dan memicu penyimpanan.
     if (showAliasDialog) {
         var aliasError by remember { mutableStateOf(false) }
 
@@ -370,6 +380,9 @@ fun AddSeedScreen(
     }
 }
 
+/**
+ * Komponen privat untuk tombol tersegmentasi (12/24 kata).
+ */
 @Composable
 private fun SegmentedButton(
     text: String,
