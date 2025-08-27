@@ -3,7 +3,9 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
-    id("kotlin-kapt")
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    kotlin("kapt")
 }
 @file:Suppress("UnstableApiUsage")
 android {
@@ -76,16 +78,28 @@ dependencies {
 
     implementation(libs.androidx.navigation.compose)
 
+    implementation(libs.androidx.hilt.navigation.compose)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.security.crypto)
 
     implementation(libs.sss4j)
     implementation(libs.gson)
 
-    implementation(libs.dagger.hilt)
+    implementation(libs.hilt.android)
     implementation(libs.androidx.datastore.preferences)
-    kapt(libs.dagger.hilt.compiler)
+    kapt(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+
+    // KotlinX Serialization
+    implementation(libs.kotlinx.serialization.json)
+
+    // Coroutines
+    implementation(libs.coroutines.core)
+    implementation(libs.coroutines.android)
+
 
     implementation(libs.timber)
 
@@ -96,8 +110,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-}
 
-kapt {
-    correctErrorTypes = true
+    androidTestImplementation(libs.hilt.android.testing)
+    kaptAndroidTest(libs.hilt.android.compiler)
 }
