@@ -1,5 +1,6 @@
 package com.app.seedlockapp.ui.screens.auth
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import com.app.seedlockapp.domain.interactor.BiometricInteractor
 import com.app.seedlockapp.domain.manager.KeystoreManager
@@ -49,13 +50,21 @@ class AuthViewModel @Inject constructor(
 
     /**
      * Dipanggil ketika otentikasi biometrik gagal atau dibatalkan.
-     * Mengubah state UI menjadi [AuthState.Error] dengan pesan yang relevan.
+     * Mengubah state UI menjadi [AuthState.Error] dengan pesan yang relevan,
+     * KECUALI jika error disebabkan oleh pembatalan oleh pengguna.
      *
      * @param errorCode Kode error yang diterima dari BiometricPrompt.
      * @param errorMessage Pesan error yang diterima.
      */
     fun onAuthError(errorCode: Int, errorMessage: String) {
-        val fullErrorMessage = "Authentication Error (Code: $errorCode): $errorMessage"
-        _authState.value = AuthState.Error(fullErrorMessage)
+        // Hanya tampilkan error jika BUKAN karena pengguna membatalkan
+        if (errorCode != BiometricPrompt.ERROR_USER_CANCELED &&
+            errorCode != BiometricPrompt.ERROR_CANCELED) {
+
+            val fullErrorMessage = "Authentication Error (Code: $errorCode): $errorMessage"
+            _authState.value = AuthState.Error(fullErrorMessage)
+        }
+        // Jika error karena dibatalkan (kondisi else), kita tidak melakukan apa-apa.
+        // State akan tetap Idle, dan tidak ada pesan error yang muncul.
     }
 }

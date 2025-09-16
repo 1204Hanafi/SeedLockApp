@@ -11,6 +11,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.app.seedlockapp.domain.manager.SessionManager
@@ -72,17 +75,20 @@ class MainActivity : FragmentActivity() {
 @Composable
 private fun RootNavigation(navController: NavHostController, sessionManager: SessionManager) {
     val isAuthenticated by sessionManager.isAuthenticated.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // LaunchedEffect digunakan untuk menangani navigasi sebagai "side-effect"
     // dari perubahan state `isAuthenticated`.
-    LaunchedEffect(isAuthenticated) {
-        if (!isAuthenticated) {
-            // Jika sesi berakhir (misalnya karena timeout atau onPause),
-            // paksa navigasi kembali ke layar otentikasi dan hapus semua back stack
-            // untuk mencegah pengguna kembali ke layar sebelumnya tanpa otentikasi.
-            navController.navigate(Screen.Auth.route) {
-                popUpTo(navController.graph.id) {
-                    inclusive = true
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (!isAuthenticated) {
+                // Jika sesi berakhir (misalnya karena timeout atau onPause),
+                // paksa navigasi kembali ke layar otentikasi dan hapus semua back stack
+                // untuk mencegah pengguna kembali ke layar sebelumnya tanpa otentikasi.
+                navController.navigate(Screen.Auth.route) {
+                    popUpTo(navController.graph.id) {
+                        inclusive = true
+                    }
                 }
             }
         }

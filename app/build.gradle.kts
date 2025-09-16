@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-    kotlin("kapt")
 }
 @file:Suppress("UnstableApiUsage")
 android {
@@ -90,7 +89,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     implementation(libs.androidx.datastore.preferences)
-    kapt(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
     // KotlinX Serialization
@@ -112,5 +111,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     androidTestImplementation(libs.hilt.android.testing)
-    kaptAndroidTest(libs.hilt.android.compiler)
+    kspAndroidTest(libs.hilt.android.compiler)
 }
