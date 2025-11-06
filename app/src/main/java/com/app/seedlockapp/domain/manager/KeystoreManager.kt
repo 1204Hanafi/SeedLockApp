@@ -13,6 +13,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlin.system.measureTimeMillis
 
 /**
  * Mengelola semua operasi kriptografi menggunakan Android Keystore System.
@@ -146,25 +147,35 @@ class KeystoreManager {
      * @param dataToEncrypt Data dalam bentuk [ByteArray] yang akan dienkripsi.
      * @return [Pair] dari data terenkripsi (Base64 String) dan IV (Base64 String), atau `null` jika enkripsi gagal.
      */
+    // Baris 149:
     fun encrypt(alias: String, dataToEncrypt: ByteArray): Pair<String, String>? {
-        return try {
-            val secretKey = getSecretKey(alias)
-            val cipher = Cipher.getInstance(Constants.KEY_ENCRYPTION_ALGORITHM)
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+        var result: Pair<String, String>? = null
+        val latency = measureTimeMillis { // Mulai pengukuran
+            try {
+                val secretKey = getSecretKey(alias)
+                val cipher = Cipher.getInstance(Constants.KEY_ENCRYPTION_ALGORITHM)
+                cipher.init(Cipher.ENCRYPT_MODE, secretKey)
 
-            val encryptedBytes = cipher.doFinal(dataToEncrypt)
-            val ivBytes = cipher.iv
+                val encryptedBytes = cipher.doFinal(dataToEncrypt)
+                val ivBytes = cipher.iv
 
-            val encryptedBase64 = Base64.encodeToString(encryptedBytes, Base64.DEFAULT)
-            val ivBase64 = Base64.encodeToString(ivBytes, Base64.DEFAULT)
+                val encryptedBase64 = Base64.encodeToString(encryptedBytes, Base64.DEFAULT)
+                val ivBase64 = Base64.encodeToString(ivBytes, Base64.DEFAULT)
 
-            Pair(encryptedBase64, ivBase64)
-        } catch (e: Exception) {
-            // Tangkap semua exception terkait enkripsi (misal: NoSuchAlgorithm, InvalidKey, etc.)
-            Timber.e(e, "Encryption failed for alias: $alias")
-            null
+                result = Pair(encryptedBase64, ivBase64)
+            } catch (e: Exception) {
+                Timber.e(e, "Encryption failed for alias: $alias")
+                result = null
+            }
+        } // Akhir pengukuran
+
+        if (result != null) {
+            // Catat latency Keystore Encrypt
+            Timber.d("PERFORMANCE_MEASURE: Keystore Encrypt Latency ($alias): $latency ms")
         }
+        return result
     }
+
 
 
     /**
@@ -176,29 +187,35 @@ class KeystoreManager {
      * @return [ByteArray] dari data plaintext yang telah didekripsi, atau `null` jika dekripsi gagal
      * (misalnya, kunci salah, IV salah, atau data terkorupsi).
      */
+    // Baris 179:
     fun decrypt(alias: String, encryptedData: String, ivBase64: String): ByteArray? {
-        return try {
-            val secretKey = getSecretKey(alias)
-            val cipher = Cipher.getInstance(Constants.KEY_ENCRYPTION_ALGORITHM)
+        var result: ByteArray? = null
+        val latency = measureTimeMillis { // Mulai pengukuran
+            try {
+                val secretKey = getSecretKey(alias)
+                val cipher = Cipher.getInstance(Constants.KEY_ENCRYPTION_ALGORITHM)
 
-            val ivBytes = Base64.decode(ivBase64, Base64.DEFAULT)
-            val gcmParameterSpec = GCMParameterSpec(Constants.AUTH_TAG_LENGTH_BITS, ivBytes)
+                val ivBytes = Base64.decode(ivBase64, Base64.DEFAULT)
+                val gcmParameterSpec = GCMParameterSpec(Constants.AUTH_TAG_LENGTH_BITS, ivBytes)
 
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmParameterSpec)
+                cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmParameterSpec)
 
-            val encryptedBytes = Base64.decode(encryptedData, Base64.DEFAULT)
-            cipher.doFinal(encryptedBytes)
-        } catch (e: KeyPermanentlyInvalidatedException) {
-            // Error ini spesifik terjadi jika kunci biometrik tidak valid lagi.
-            Timber.e(e, "Decryption failed because the key for alias '$alias' has been permanently invalidated.")
-            // Pertimbangkan untuk menghapus kunci yang tidak valid di sini jika perlu.
-            // deleteKey(alias)
-            null
+                val encryptedBytes = Base64.decode(encryptedData, Base64.DEFAULT)
+                result = cipher.doFinal(encryptedBytes)
+            } catch (e: KeyPermanentlyInvalidatedException) {
+                Timber.e(e, "Decryption failed because the key for alias '$alias' has been permanently invalidated.")
+                result = null
+            }
+            catch (e: Exception) {
+                Timber.e(e, "Decryption failed for alias: $alias")
+                result = null
+            }
+        } // Akhir pengukuran
+
+        if (result != null) {
+            // Catat latency Keystore Decrypt
+            Timber.d("PERFORMANCE_MEASURE: Keystore Decrypt Latency ($alias): $latency ms")
         }
-        catch (e: Exception) {
-            // Tangkap semua error dekripsi lainnya (misal: AEADBadTagException untuk data korup)
-            Timber.e(e, "Decryption failed for alias: $alias")
-            null
-        }
+        return result
     }
 }

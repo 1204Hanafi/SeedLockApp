@@ -37,13 +37,10 @@ class SeedRepository(
      * @return [Result.success] jika semua proses berhasil, atau [Result.failure] dengan [Exception] yang relevan jika terjadi kegagalan.
      */
     suspend fun saveSeed(phrase: String, alias: String): Result<Unit> {
-        val startTime = System.currentTimeMillis()
         return try {
             // 1. Split phrase menggunakan SSS
             val shares: List<DomainShare> = shamirManager.split(phrase)
                 ?: return Result.failure(Exception("Gagal memecah seed phrase (SSS split returned null)."))
-            val splitTime = System.currentTimeMillis()
-            Timber.d("SSS Split Latency: ${splitTime - startTime} ms")
 
             // 2. Enkripsi setiap share
             val seedId = UUID.randomUUID().toString()
@@ -59,14 +56,10 @@ class SeedRepository(
                     iv = encryptedResult.second
                 )
             }
-            val encryptTime = System.currentTimeMillis()
-            Timber.d("Total Encryption Latency: ${encryptTime - splitTime} ms")
 
             // 3. Simpan ke DataStore
             dataStoreManager.saveShares(seedId, alias, encryptedShares)
                 .onFailure { return Result.failure(it) } // Propagate failure from DataStore
-            val saveTime = System.currentTimeMillis()
-            Timber.d("DataStore Save Latency: ${saveTime - encryptTime} ms")
 
             Result.success(Unit)
         } catch (e: GeneralSecurityException) {
