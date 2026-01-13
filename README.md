@@ -1,5 +1,5 @@
 Proyek Skripsi: SeedLock
-Implementasi dan Evaluasi Aplikasi Android untuk Penyimpanan Seed Phrase pada Wallet Non-Custodial Menggunakan Keystore, BiometricPrompt, dan Shamir’s Secret Sharing.
+Rancang Bangun Dan Evaluasi Keamanan Aplikasi Android Untuk Penyimpanan Seed Phrase Wallet Non-Custodial Berbasis Keystore, BiometricPrompt, Dan Shamir's Secret Sharing.
 
 1. Ringkasan Proyek
    SeedLock adalah aplikasi Android prototipe yang dirancang untuk menyimpan seed phrase dari dompet non-kustodial dengan tingkat keamanan tinggi. Aplikasi ini mengimplementasikan pendekatan keamanan berlapis (defense-in-depth) dengan menggabungkan tiga teknologi utama:
